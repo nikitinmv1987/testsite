@@ -6,7 +6,7 @@
   <style>
     body { font-family: sans-serif; max-width: 700px; margin: 2em auto; }
     label { display: block; margin-top: 1em; }
-    input { width: 100%; padding: 0.5em; box-sizing: border-box; }
+    input, textarea { width: 100%; padding: 0.5em; box-sizing: border-box; font-family: monospace; }
     button { margin-top: 1.5em; padding: 0.7em 1.2em; }
     details { margin-top: 1em; border: 1px solid #ccc; border-radius: 4px; background: #f9f9f9; }
     summary { padding: 0.5em; font-weight: bold; cursor: pointer; }
@@ -16,6 +16,17 @@
 <body>
   <h2>Salesforce API Test – Request & Response Details</h2>
   
+  <label for="apiUrl">
+    API URL:
+    <input id="apiUrl" type="text"
+      value="https://altium--test.sandbox.my.salesforce-sites.com/PublicApi/services/apexrest/g2cemailcheck">
+  </label>
+  
+  <label for="accessToken">
+    Access Token:
+    <input id="accessToken" type="text" value="my-secret-token-123">
+  </label>
+
   <label for="primaryEmail">
     Primary Email:
     <input id="primaryEmail" type="email" placeholder="test@example.com" required>
@@ -44,18 +55,24 @@
       document.getElementById('requestDetails').textContent = '— not sent —';
       document.getElementById('responseDetails').textContent = '— no data —';
 
+      const url = document.getElementById('apiUrl').value.trim();
+      const token = document.getElementById('accessToken').value.trim();
       const primaryEmail = document.getElementById('primaryEmail').value.trim();
       const studentEmail = document.getElementById('studentEmail').value.trim();
+
+      if (!url || !token) {
+        alert('Please provide both API URL and access token.');
+        return;
+      }
       if (!primaryEmail || !studentEmail) {
         alert('Please fill in both email fields.');
         return;
       }
 
-      const url = 'https://altium--test.sandbox.my.salesforce-sites.com/PublicApi/services/apexrest/g2cemailcheck';
       const method = 'POST';
       const headers = {
         'Content-Type': 'application/json',
-        'X-Access-Token': 'my-secret-token-123'
+        'X-Access-Token': token
       };
       const body = JSON.stringify({ primaryEmail, studentEmail }, null, 2);
 

@@ -2,7 +2,7 @@
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>Salesforce API Test – Editable URL & Token</title>
+  <title>Salesforce API Test – Custom Header</title>
   <style>
     body { font-family: sans-serif; max-width: 800px; margin: 2em auto; }
     label { display: block; margin-top: 1em; font-weight: bold; }
@@ -15,12 +15,12 @@
   </style>
 </head>
 <body>
-  <h2>Salesforce API Test – Editable URL & Token</h2>
+  <h2>Salesforce API Test – Custom “X-Access-Token” Header</h2>
   
   <label for="apiUrl">API URL:</label>
   <textarea id="apiUrl" rows="2">https://altium--test.sandbox.my.salesforce-sites.com/PublicApi/services/apexrest/g2cemailcheck</textarea>
   
-  <label for="accessToken">Access Token:</label>
+  <label for="accessToken">X-Access-Token:</label>
   <textarea id="accessToken" rows="1">my-secret-token-123</textarea>
 
   <label for="primaryEmail">Primary Email:</label>
@@ -43,59 +43,74 @@
 
   <script>
     async function testApi() {
-      // Clear previous details
+      // clear previous
       document.getElementById('requestDetails').textContent = '— not sent —';
       document.getElementById('responseDetails').textContent = '— no data —';
 
-      const url = document.getElementById('apiUrl').value.trim();
-      const token = document.getElementById('accessToken').value.trim();
-      const primaryEmail = document.getElementById('primaryEmail').value.trim();
-      const studentEmail = document.getElementById('studentEmail').value.trim();
+      const url    = document.getElementById('apiUrl').value.trim();
+      const token  = document.getElementById('accessToken').value.trim();
+      const email1 = document.getElementById('primaryEmail').value.trim();
+      const email2 = document.getElementById('studentEmail').value.trim();
 
       if (!url || !token) {
-        alert('Please provide both API URL and access token.');
+        alert('Please provide both API URL and X-Access-Token.');
         return;
       }
-      if (!primaryEmail || !studentEmail) {
+      if (!email1 || !email2) {
         alert('Please fill in both email fields.');
         return;
       }
 
-      const method = 'POST';
-      const headers = {
-        'Content-Type': 'application/json',
-        'X-Access-Token': token
-      };
-      const body = JSON.stringify({ primaryEmail, studentEmail }, null, 2);
+      const payload = { primaryEmail: email1, studentEmail: email2 };
+      const body    = JSON.stringify(payload, null, 2);
 
-      // Show request details
+      // build headers via the Headers API
+      const headers = new Headers();
+      headers.append('Content-Type', 'application/json');
+      headers.append('X-Access-Token', token);
+      // also lowercase variant, in case Apex maps keys to lowercase
+      headers.append('x-access-token', token);
+
+      // log to console so you can inspect in DevTools → Network
+      console.log('Request Headers:');
+      headers.forEach((v,k) => console.log(k + ':', v));
+
+      // prepare a Request object if you want detailed inspection
+      const requestObj = new Request(url, { method: 'POST', headers, body });
+      console.log('Request Object:', requestObj);
+
+      // show request details on page
       document.getElementById('requestDetails').textContent =
         `URL: ${url}\n` +
-        `Method: ${method}\n` +
-        `Headers: ${JSON.stringify(headers, null, 2)}\n` +
+        `Method: POST\n` +
+        `Headers: ${JSON.stringify(
+          Array.from(headers.entries())
+            .reduce((o,[k,v]) => (o[k]=v,o),{}), null, 2)}\n` +
         `Body:\n${body}`;
 
       try {
-        const response = await fetch(url, { method, headers, body });
-        const statusLine = `${response.status} ${response.statusText}`;
-        let responseHeaders = {};
-        response.headers.forEach((val, key) => { responseHeaders[key] = val; });
+        const resp = await fetch(requestObj);
+        const statusLine = `${resp.status} ${resp.statusText}`;
+        let respHeaders = {};
+        resp.headers.forEach((v,k) => { respHeaders[k]=v; });
 
-        // Read response body
-        let responseBody;
-        const contentType = response.headers.get('Content-Type') || '';
-        if (contentType.includes('application/json')) {
-          responseBody = JSON.stringify(await response.json(), null, 2);
+        // parse response body
+        let respBody;
+        const ct = resp.headers.get('Content-Type') || '';
+        if (ct.includes('application/json')) {
+          respBody = JSON.stringify(await resp.json(), null, 2);
         } else {
-          responseBody = await response.text();
+          respBody = await resp.text();
         }
 
-        // Show response details
+        // show on page
         document.getElementById('responseDetails').textContent =
           `Status: ${statusLine}\n` +
-          `Headers: ${JSON.stringify(responseHeaders, null, 2)}\n` +
-          `Body:\n${responseBody}`;
+          `Headers: ${JSON.stringify(respHeaders, null, 2)}\n` +
+          `Body:\n${respBody}`;
+
       } catch (err) {
+        console.error('Fetch error:', err);
         document.getElementById('responseDetails').textContent =
           `Fetch error:\n${err}`;
       }

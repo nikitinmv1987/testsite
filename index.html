@@ -2,11 +2,12 @@
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>Salesforce API Test – Request & Response Details</title>
+  <title>Salesforce API Test – Editable URL & Token</title>
   <style>
-    body { font-family: sans-serif; max-width: 700px; margin: 2em auto; }
-    label { display: block; margin-top: 1em; }
-    input, textarea { width: 100%; padding: 0.5em; box-sizing: border-box; font-family: monospace; }
+    body { font-family: sans-serif; max-width: 800px; margin: 2em auto; }
+    label { display: block; margin-top: 1em; font-weight: bold; }
+    textarea, input { width: 100%; padding: 0.5em; box-sizing: border-box; font-family: monospace; }
+    textarea { resize: vertical; }
     button { margin-top: 1.5em; padding: 0.7em 1.2em; }
     details { margin-top: 1em; border: 1px solid #ccc; border-radius: 4px; background: #f9f9f9; }
     summary { padding: 0.5em; font-weight: bold; cursor: pointer; }
@@ -14,28 +15,19 @@
   </style>
 </head>
 <body>
-  <h2>Salesforce API Test – Request & Response Details</h2>
+  <h2>Salesforce API Test – Editable URL & Token</h2>
   
-  <label for="apiUrl">
-    API URL:
-    <input id="apiUrl" type="text"
-      value="https://altium--test.sandbox.my.salesforce-sites.com/PublicApi/services/apexrest/g2cemailcheck">
-  </label>
+  <label for="apiUrl">API URL:</label>
+  <textarea id="apiUrl" rows="2">https://altium--test.sandbox.my.salesforce-sites.com/PublicApi/services/apexrest/g2cemailcheck</textarea>
   
-  <label for="accessToken">
-    Access Token:
-    <input id="accessToken" type="text" value="my-secret-token-123">
-  </label>
+  <label for="accessToken">Access Token:</label>
+  <textarea id="accessToken" rows="1">my-secret-token-123</textarea>
 
-  <label for="primaryEmail">
-    Primary Email:
-    <input id="primaryEmail" type="email" placeholder="test@example.com" required>
-  </label>
+  <label for="primaryEmail">Primary Email:</label>
+  <input id="primaryEmail" type="email" placeholder="test@example.com" required>
   
-  <label for="studentEmail">
-    Student Email:
-    <input id="studentEmail" type="email" placeholder="student@university.edu" required>
-  </label>
+  <label for="studentEmail">Student Email:</label>
+  <input id="studentEmail" type="email" placeholder="student@university.edu" required>
   
   <button onclick="testApi()">Send Request</button>
   
@@ -51,7 +43,7 @@
 
   <script>
     async function testApi() {
-      // Clear previous data
+      // Clear previous details
       document.getElementById('requestDetails').textContent = '— not sent —';
       document.getElementById('responseDetails').textContent = '— no data —';
 
@@ -93,8 +85,7 @@
         let responseBody;
         const contentType = response.headers.get('Content-Type') || '';
         if (contentType.includes('application/json')) {
-          const json = await response.json();
-          responseBody = JSON.stringify(json, null, 2);
+          responseBody = JSON.stringify(await response.json(), null, 2);
         } else {
           responseBody = await response.text();
         }

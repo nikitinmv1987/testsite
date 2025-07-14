@@ -15,12 +15,12 @@
   </style>
 </head>
 <body>
-  <h2>Salesforce API Test – Custom “X-Access-Token” Header</h2>
+  <h2>Salesforce API Test – Custom “x-access-token” Header</h2>
   
   <label for="apiUrl">API URL:</label>
   <textarea id="apiUrl" rows="2">https://altium--test.sandbox.my.salesforce-sites.com/PublicApi/services/apexrest/g2cemailcheck</textarea>
   
-  <label for="accessToken">X-Access-Token:</label>
+  <label for="accessToken">x-access-token:</label>
   <textarea id="accessToken" rows="1">my-secret-token-123</textarea>
 
   <label for="primaryEmail">Primary Email:</label>
@@ -53,7 +53,7 @@
       const email2 = document.getElementById('studentEmail').value.trim();
 
       if (!url || !token) {
-        alert('Please provide both API URL and X-Access-Token.');
+        alert('Please provide both API URL and x-access-token.');
         return;
       }
       if (!email1 || !email2) {
@@ -67,7 +67,7 @@
       // build headers via the Headers API
       const headers = new Headers();
       headers.append('Content-Type', 'application/json');
-      headers.append('X-Access-Token', token);
+      headers.append('x-access-token', token);
       // also lowercase variant, in case Apex maps keys to lowercase
       headers.append('x-access-token', token);
 

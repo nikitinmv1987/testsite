@@ -1,120 +1,201 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Salesforce API Test – Custom Header</title>
+  <title>Marketo → Salesforce Public API Integration Example</title>
   <style>
-    body { font-family: sans-serif; max-width: 800px; margin: 2em auto; }
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 800px;
+      margin: 2em auto;
+      line-height: 1.5;
+    }
+    h1, h2, h3 {
+      color: #2a5d9f;
+    }
+    pre {
+      background: #f4f4f4;
+      padding: 1em;
+      overflow-x: auto;
+      border-radius: 4px;
+    }
+    code { font-family: monospace; }
     label { display: block; margin-top: 1em; font-weight: bold; }
-    textarea, input { width: 100%; padding: 0.5em; box-sizing: border-box; font-family: monospace; }
-    textarea { resize: vertical; }
-    button { margin-top: 1.5em; padding: 0.7em 1.2em; }
-    details { margin-top: 1em; border: 1px solid #ccc; border-radius: 4px; background: #f9f9f9; }
-    summary { padding: 0.5em; font-weight: bold; cursor: pointer; }
-    pre { padding: 0.5em; white-space: pre-wrap; font-family: monospace; margin: 0; }
+    input, textarea { width: 100%; padding: 0.5em; box-sizing: border-box; }
+    button { margin: 1em 0; padding: 0.7em 1.2em; font-size: 1em; }
+    details { margin-top: 1em; }
+    summary { cursor: pointer; font-weight: bold; }
+    .note { font-size: 0.9em; color: #555; }
   </style>
 </head>
 <body>
-  <h2>Salesforce API Test – Custom “x-access-token” Header</h2>
-  
-  <label for="apiUrl">API URL:</label>
-  <textarea id="apiUrl" rows="2">https://altium--test.sandbox.my.salesforce-sites.com/PublicApi/services/apexrest/g2cemailcheck</textarea>
-  
-  <label for="accessToken">x-access-token:</label>
-  <textarea id="accessToken" rows="1">my-secret-token-123</textarea>
 
-  <label for="primaryEmail">Primary Email:</label>
-  <input id="primaryEmail" type="email" placeholder="test@example.com" required>
-  
-  <label for="studentEmail">Student Email:</label>
-  <input id="studentEmail" type="email" placeholder="student@university.edu" required>
-  
-  <button onclick="testApi()">Send Request</button>
-  
-  <details id="reqDetails">
-    <summary>Request Details</summary>
+  <h1>Marketo → Salesforce Public API Integration</h1>
+
+  <p class="note">
+    This page demonstrates how to capture two email fields from a Marketo form and post them to your Salesforce
+    Apex REST service (g2cemailcheck).  Developers can simply replace the <code>mktoFormId</code> and token,
+    drop in this snippet, and go.
+  </p>
+
+  <!--
+    ===============================
+    SECTION 1: CONFIGURATION
+    ===============================
+  -->
+  <h2>1. Configuration</h2>
+
+  <label for="apiUrl">Salesforce API Endpoint</label>
+  <textarea id="apiUrl" rows="2">
+https://altium--test.sandbox.my.salesforce-sites.com/PublicApi/services/apexrest/g2cemailcheck
+  </textarea>
+
+  <label for="accessToken">x-access-token (from your custom metadata)</label>
+  <input id="accessToken" type="text" value="my-secret-token-123" />
+
+  <p class="note">
+    Make sure your Salesforce Site has the Public API exposed at the URL above, and that the token matches
+    <code>SECRET_TOKEN</code> in your Apex class.
+  </p>
+
+
+  <!--
+    ===============================
+    SECTION 2: MARKETO FORM SETUP
+    ===============================
+  -->
+  <h2>2. Marketo Form Setup</h2>
+  <p>
+    Replace <code>123</code> below with your actual Marketo form ID.  We hook into the form’s onSubmit callback
+    so that, when the user clicks “Submit”, we first call Salesforce, then allow Marketo to continue.
+  </p>
+
+  <pre><code>&lt;!-- include this where you load your Marketo form --&gt;
+&lt;script src="https://app-sjqe.marketo.com/js/forms2/js/forms2.min.js"&gt;&lt;/script&gt;
+&lt;form id="mktoForm_123"&gt;&lt;/form&gt;
+&lt;script&gt;
+  MktoForms2.loadForm("//app-sjqe.marketo.com", "123-ABC-456", 123, function(form){
+    // intercept the submit:
+    form.onSubmit(function(){
+      // read values from the form fields:
+      const primaryEmail = form.vals().Email;       // Marketo field "Email"
+      const studentEmail = form.vals().StudentEmail; // custom field "StudentEmail__c"
+      // call our helper:
+      testApi(primaryEmail, studentEmail);
+      // allow Marketo to continue posting as usual:
+      form.submit(); 
+      // Note: if you want to block Marketo until SF returns, move form.submit() into the .then() below
+    });
+  });
+&lt;/script&gt;
+</code></pre>
+
+
+  <!--
+    ===============================
+    SECTION 3: VISUAL TEST HARNESS
+    For debugging outside a Marketo page.
+    ===============================
+  -->
+  <h2>3. Standalone Test Harness (Optional)</h2>
+  <p>If you just want to debug the call without Marketo, use these inputs:</p>
+
+  <label for="primaryEmail">Primary Email</label>
+  <input id="primaryEmail" type="email" placeholder="test@example.com" />
+
+  <label for="studentEmail">Student Email</label>
+  <input id="studentEmail" type="email" placeholder="student@school.edu" />
+
+  <button id="debugButton">Send to Salesforce API</button>
+
+  <details>
+    <summary>Raw Request</summary>
     <pre id="requestDetails">— not sent —</pre>
   </details>
-  
-  <details id="resDetails">
-    <summary>Response Details</summary>
+  <details>
+    <summary>Raw Response</summary>
     <pre id="responseDetails">— no data —</pre>
   </details>
 
+
+  <!--
+    ===============================
+    SECTION 4: JAVASCRIPT HELPER FUNCTION
+    ===============================
+  -->
   <script>
-    async function testApi() {
-      // clear previous
-      document.getElementById('requestDetails').textContent = '— not sent —';
-      document.getElementById('responseDetails').textContent = '— no data —';
-
-      const url    = document.getElementById('apiUrl').value.trim();
-      const token  = document.getElementById('accessToken').value.trim();
-      const email1 = document.getElementById('primaryEmail').value.trim();
-      const email2 = document.getElementById('studentEmail').value.trim();
-
+    /**
+     * testApi()
+     *
+     * Sends { primaryEmail, studentEmail } to your Salesforce Apex REST service,
+     * passing x-access-token in headers.  Automatically logs and displays request/response.
+     *
+     * @param {string} email1  – primaryEmail field value
+     * @param {string} email2  – studentEmail field value
+     */
+    async function testApi(email1, email2) {
+      // read config
+      const url   = document.getElementById('apiUrl').value.trim();
+      const token = document.getElementById('accessToken').value.trim();
       if (!url || !token) {
-        alert('Please provide both API URL and x-access-token.');
-        return;
+        return alert('❗ Please configure both API URL and access token.');
       }
       if (!email1 || !email2) {
-        alert('Please fill in both email fields.');
-        return;
+        return alert('❗ Please fill in both email parameters.');
       }
 
+      // payload
       const payload = { primaryEmail: email1, studentEmail: email2 };
       const body    = JSON.stringify(payload, null, 2);
 
-      // build headers via the Headers API
+      // build headers
       const headers = new Headers();
       headers.append('Content-Type', 'application/json');
       headers.append('x-access-token', token);
-      // also lowercase variant, in case Apex maps keys to lowercase
-      headers.append('x-access-token', token);
 
-      // log to console so you can inspect in DevTools → Network
-      console.log('Request Headers:');
-      headers.forEach((v,k) => console.log(k + ':', v));
-
-      // prepare a Request object if you want detailed inspection
-      const requestObj = new Request(url, { method: 'POST', headers, body });
-      console.log('Request Object:', requestObj);
-
-      // show request details on page
+      // display request
       document.getElementById('requestDetails').textContent =
-        `URL: ${url}\n` +
-        `Method: POST\n` +
-        `Headers: ${JSON.stringify(
-          Array.from(headers.entries())
-            .reduce((o,[k,v]) => (o[k]=v,o),{}), null, 2)}\n` +
-        `Body:\n${body}`;
+        `POST ${url}\n\nHeaders:\n`  +
+        JSON.stringify(Object.fromEntries(headers.entries()), null, 2) +
+        `\n\nBody:\n${body}`;
 
       try {
-        const resp = await fetch(requestObj);
+        // fire it off
+        const resp = await fetch(url, { method: 'POST', headers, body });
         const statusLine = `${resp.status} ${resp.statusText}`;
-        let respHeaders = {};
-        resp.headers.forEach((v,k) => { respHeaders[k]=v; });
+        const respHeaders = {};
+        resp.headers.forEach((v,k) => respHeaders[k] = v);
 
-        // parse response body
+        // parse JSON or text
         let respBody;
-        const ct = resp.headers.get('Content-Type') || '';
+        const ct = resp.headers.get('Content-Type')||'';
         if (ct.includes('application/json')) {
           respBody = JSON.stringify(await resp.json(), null, 2);
         } else {
           respBody = await resp.text();
         }
 
-        // show on page
+        // display response
         document.getElementById('responseDetails').textContent =
-          `Status: ${statusLine}\n` +
-          `Headers: ${JSON.stringify(respHeaders, null, 2)}\n` +
-          `Body:\n${respBody}`;
-
-      } catch (err) {
+          `Status: ${statusLine}\n\nHeaders:\n` +
+          JSON.stringify(respHeaders, null, 2) +
+          `\n\nBody:\n${respBody}`;
+      }
+      catch(err) {
         console.error('Fetch error:', err);
         document.getElementById('responseDetails').textContent =
-          `Fetch error:\n${err}`;
+          `❌ Fetch error:\n${err}`;
       }
     }
+
+    // hook up debug button if present
+    document.getElementById('debugButton')?.addEventListener('click', () => {
+      testApi(
+        document.getElementById('primaryEmail').value.trim(),
+        document.getElementById('studentEmail').value.trim()
+      );
+    });
   </script>
+
 </body>
 </html>

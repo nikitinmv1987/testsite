@@ -33,21 +33,16 @@
   <h1>Marketo → Salesforce Public API Integration</h1>
 
   <p class="note">
-    This page demonstrates how to capture two email fields from a Marketo form and post them to your Salesforce
-    Apex REST service (g2cemailcheck).  Developers can simply replace the <code>mktoFormId</code> and token,
+    This page demonstrates how to capture fields from a Marketo form and post them to your Salesforce
+    Apex REST service (g2cemailcheck). Developers can simply replace the <code>mktoFormId</code> and token,
     drop in this snippet, and go.
   </p>
 
-  <!--
-    ===============================
-    SECTION 1: CONFIGURATION
-    ===============================
-  -->
   <h2>1. Configuration</h2>
 
   <label for="apiUrl">Salesforce API Endpoint</label>
   <textarea id="apiUrl" rows="2">
-https://altium.my.salesforce-sites.com/PublicApi/services/apexrest/g2cemailcheck
+https://altium--test.sandbox.my.salesforce-sites.com/PublicApi/services/apexrest/g2cemailcheck
   </textarea>
 
   <label for="accessToken">x-access-token (from your custom metadata)</label>
@@ -59,14 +54,9 @@ https://altium.my.salesforce-sites.com/PublicApi/services/apexrest/g2cemailcheck
   </p>
 
 
-  <!--
-    ===============================
-    SECTION 2: MARKETO FORM SETUP
-    ===============================
-  -->
   <h2>2. Marketo Form Setup</h2>
   <p>
-    Replace <code>123</code> below with your actual Marketo form ID.  We hook into the form’s onSubmit callback
+    Replace <code>123</code> below with your actual Marketo form ID. We hook into the form’s onSubmit callback
     so that, when the user clicks “Submit”, we first call Salesforce, then allow Marketo to continue.
   </p>
 
@@ -78,10 +68,10 @@ https://altium.my.salesforce-sites.com/PublicApi/services/apexrest/g2cemailcheck
     // intercept the submit:
     form.onSubmit(function(){
       // read values from the form fields:
-      const primaryEmail = form.vals().Email;       // Marketo field "Email"
+      const eventIds     = form.vals().eventIds;     // Marketo field "eventIds"
       const studentEmail = form.vals().StudentEmail; // custom field "StudentEmail__c"
       // call our helper:
-      testApi(primaryEmail, studentEmail);
+      testApi(eventIds, studentEmail);
       // allow Marketo to continue posting as usual:
       form.submit(); 
       // Note: if you want to block Marketo until SF returns, move form.submit() into the .then() below
@@ -91,17 +81,11 @@ https://altium.my.salesforce-sites.com/PublicApi/services/apexrest/g2cemailcheck
 </code></pre>
 
 
-  <!--
-    ===============================
-    SECTION 3: VISUAL TEST HARNESS
-    For debugging outside a Marketo page.
-    ===============================
-  -->
   <h2>3. Standalone Test Harness (Optional)</h2>
   <p>If you just want to debug the call without Marketo, use these inputs:</p>
 
-  <label for="primaryEmail">Primary Email</label>
-  <input id="primaryEmail" type="email" placeholder="test@example.com" />
+  <label for="eventIds">Event IDs</label>
+  <input id="eventIds" type="text" placeholder="or list of event GUIDs" />
 
   <label for="studentEmail">Student Email</label>
   <input id="studentEmail" type="email" placeholder="student@school.edu" />
@@ -118,34 +102,29 @@ https://altium.my.salesforce-sites.com/PublicApi/services/apexrest/g2cemailcheck
   </details>
 
 
-  <!--
-    ===============================
-    SECTION 4: JAVASCRIPT HELPER FUNCTION
-    ===============================
-  -->
   <script>
     /**
      * testApi()
      *
-     * Sends { primaryEmail, studentEmail } to your Salesforce Apex REST service,
-     * passing x-access-token in headers.  Automatically logs and displays request/response.
+     * Sends { eventIds, studentEmail } to your Salesforce Apex REST service,
+     * passing x-access-token in headers. Automatically logs and displays request/response.
      *
-     * @param {string} email1  – primaryEmail field value
-     * @param {string} email2  – studentEmail field value
+     * @param {string} ids    – eventIds field value
+     * @param {string} email2 – studentEmail field value
      */
-    async function testApi(email1, email2) {
+    async function testApi(ids, email2) {
       // read config
       const url   = document.getElementById('apiUrl').value.trim();
       const token = document.getElementById('accessToken').value.trim();
       if (!url || !token) {
         return alert('❗ Please configure both API URL and access token.');
       }
-      if (!email1 || !email2) {
-        return alert('❗ Please fill in both email parameters.');
+      if (!ids || !email2) {
+        return alert('❗ Please fill in both parameters.');
       }
 
       // payload
-      const payload = { primaryEmail: email1, studentEmail: email2 };
+      const payload = { eventIds: ids, studentEmail: email2 };
       const body    = JSON.stringify(payload, null, 2);
 
       // build headers
@@ -191,7 +170,7 @@ https://altium.my.salesforce-sites.com/PublicApi/services/apexrest/g2cemailcheck
     // hook up debug button if present
     document.getElementById('debugButton')?.addEventListener('click', () => {
       testApi(
-        document.getElementById('primaryEmail').value.trim(),
+        document.getElementById('eventIds').value.trim(),
         document.getElementById('studentEmail').value.trim()
       );
     });
